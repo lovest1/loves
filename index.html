@@ -1,0 +1,256 @@
+<html>
+<head>
+  <title>Salesman Tracker</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #acb6e5);
+      color: #fff;
+      min-height: 100vh;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      max-width: 90%;
+      margin: 0 auto;
+      backdrop-filter: blur(10px);
+    }
+    h1 {
+      font-size: 1.8em;
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    #dataDisplay {
+      font-size: 1em;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+    .loading {
+      text-align: center;
+      font-style: italic;
+      color: #e0e0e0;
+    }
+    .category {
+      margin: 15px 0;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+    .category h2 {
+      margin: 0 0 10px 0;
+      font-size: 1.2em;
+    }
+    img {
+      max-width: 200px;
+      margin: 5px;
+      border-radius: 5px;
+    }
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      h1 { font-size: 1.5em; }
+      #dataDisplay { font-size: 0.9em; }
+      .container { padding: 15px; }
+      img { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Salesman Tracker</h1>
+    <div id="dataDisplay" class="loading">Collecting your data... Please wait.</div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    // Data structure
+    let salesmanData = {
+      device: {},
+      display: {},
+      browser: {},
+      network: {},
+      location: {},
+      time: {},
+      battery: {},
+      sensors: {},
+      hardware: {},
+      screenshot: {}
+    };
+
+    // Utility functions
+    function getBrowserName() {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes("firefox")) return "Firefox";
+      if (ua.includes("chrome") && !ua.includes("edg")) return "Chrome";
+      if (ua.includes("safari") && !ua.includes("chrome")) return "Safari";
+      if (ua.includes("edg")) return "Edge";
+      if (ua.includes("trident")) return "Internet Explorer";
+      return ua.includes("fb") ? "Facebook In-App" : "Unknown/In-App";
+    }
+
+    function getDeviceModel() {
+      const ua = navigator.userAgent;
+      if (/iPhone|iPad|iPod/.test(ua)) return ua.match(/(iPhone|iPad|iPod)/)[0];
+      if (/Android/.test(ua)) return ua.match(/Android.*?(?=[\s;])/)[0] || "Android Device";
+      return "Unknown";
+    }
+
+    function getOS() {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes("windows")) return "Windows";
+      if (ua.includes("android")) return "Android";
+      if (ua.includes("iphone") || ua.includes("ipad")) return "iOS";
+      if (ua.includes("mac")) return "macOS";
+      if (ua.includes("linux")) return "Linux";
+      return "Unknown";
+    }
+
+    function isTouchScreen() {
+      return "ontouchstart" in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+    }
+
+    function getTimezoneCountry() {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const parts = tz.split("/");
+      return parts.length > 1 ? parts[0] : "Unknown";
+    }
+
+    // Update display
+    function updateDisplay() {
+      const display = document.getElementById("dataDisplay");
+      display.classList.remove("loading");
+      display.innerHTML = Object.entries(salesmanData)
+        .filter(([_, data]) => Object.keys(data).length > 0)
+        .map(([category, data]) => {
+          return `<div class="category">
+            <h2>${category.charAt(0).toUpperCase() + category.slice(1)}</h2>
+            ${Object.entries(data).map(([key, value]) => {
+              if (key === "Screenshot" && value) {
+                return `Screenshot: <img src="${value}" alt="Screenshot">`;
+              }
+              return `${key}: ${value}`;
+            }).join("<br>")}
+          </div>`;
+        })
+        .join("");
+    }
+
+    // Send to Google Drive via Apps Script
+    async function sendToGoogleDrive() {
+      const url = "https://script.google.com/macros/s/AKfycbygVcJfK74SsK4TFMQzfOJmChbYYiWK3lT_K6GrsbNoNGO1s44FY-pps2wuBlu7_wPHLQ/exec"; // Your Web App URL
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          body: JSON.stringify(salesmanData),
+          headers: { "Content-Type": "application/json" }
+        });
+        const result = await response.text();
+        console.log(result); // Logs "Data uploaded successfully" or error
+      } catch (error) {
+        console.error("Error sending to Google Drive:", error);
+      }
+    }
+
+    // Collect data
+    async function collectData() {
+      // Device info
+      salesmanData.device = {
+        "OS": getOS(),
+        "Touch Screen": isTouchScreen() ? "Yes" : "No",
+        "Name": navigator.userAgent,
+        "Memory (GB)": navigator.deviceMemory || "N/A",
+        "Model": getDeviceModel(),
+        "CPU Cores": navigator.hardwareConcurrency || "N/A",
+        "Language": navigator.language || "N/A"
+      };
+
+      // Display info
+      salesmanData.display = {
+        "Screen Size": `${window.screen.width}x${window.screen.height}`,
+        "Available Screen Size": `${window.screen.availWidth}x${window.screen.availHeight}`,
+        "Color Depth": window.screen.colorDepth || "N/A",
+        "Pixel Depth": window.screen.pixelDepth || "N/A",
+        "Window Size": `${window.innerWidth}x${window.innerHeight}`,
+        "Orientation": window.screen.orientation?.type || "N/A"
+      };
+
+      // Browser info
+      salesmanData.browser = {
+        "Name": getBrowserName(),
+        "Version": navigator.appVersion,
+        "Cookies Enabled": navigator.cookieEnabled ? "Yes" : "No",
+        "Languages": navigator.languages?.join(", ") || "N/A",
+        "Online": navigator.onLine ? "Yes" : "No",
+        "Vendor": navigator.vendor || "N/A",
+        "WebGL Support": !!window.WebGLRenderingContext ? "Yes" : "No"
+      };
+
+      // Network info
+      salesmanData.network = {
+        "IP Address": "Fetching...",
+        "Type": navigator.connection?.type || "N/A",
+        "Downlink (Mbps)": navigator.connection?.downlink || "N/A",
+        "Effective Type": navigator.connection?.effectiveType || "N/A",
+        "RTT (ms)": navigator.connection?.rtt || "N/A"
+      };
+
+      // Time info
+      salesmanData.time = {
+        "Local Time": new Date().toLocaleString(),
+        "Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+        "Timezone Country": getTimezoneCountry()
+      };
+
+      // Hardware info
+      salesmanData.hardware = {
+        "Bluetooth": "navigator.bluetooth" in window ? "Supported" : "Not supported",
+        "USB Devices": "navigator.usb" in window ? "Supported" : "Not supported",
+        "Storage Quota (MB)": "N/A"
+      };
+
+      // Fetch IP address
+      try {
+        const ipResponse = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipResponse.json();
+        salesmanData.network["IP Address"] = ipData.ip;
+      } catch {
+        salesmanData.network["IP Address"] = "Failed";
+      }
+
+      // Fetch storage info
+      if (navigator.storage?.estimate) {
+        try {
+          const estimate = await navigator.storage.estimate();
+          salesmanData.hardware["Storage Quota (MB)"] = Math.round(estimate.quota / 1024 / 1024);
+          salesmanData.hardware["Storage Used (MB)"] = Math.round(estimate.usage / 1024 / 1024);
+        } catch {}
+      }
+
+      // Capture screenshot
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        await html2canvas(document.body).then(c => {
+          canvas.getContext("2d").drawImage(c, 0, 0);
+          salesmanData.screenshot["Screenshot"] = canvas.toDataURL("image/jpeg");
+        });
+      } catch (error) {
+        console.error("Screenshot failed:", error);
+      }
+
+      // Update display and send to Google Drive
+      updateDisplay();
+      await sendToGoogleDrive();
+    }
+
+    // Start data collection on page load
+    window.onload = () => {
+      collectData();
+    };
+  </script>
+</body>
+</html>
